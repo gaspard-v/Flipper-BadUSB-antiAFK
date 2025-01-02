@@ -19,6 +19,7 @@ function randomUInt16() {
 
 const randomVid = randomUInt16();
 const randomPid = randomUInt16();
+const character = "a";
 
 badusb.setup({
     vid: randomVid,
@@ -29,7 +30,7 @@ badusb.setup({
 });
 
 function onPeriodic(_subscription, _item, eventLoop) {
-	badusb.print("a");
+	badusb.print(character);
 }
 
 function onInput(_sub, button, eventLoop, gui, hasStarted) {
@@ -49,10 +50,19 @@ function onInput(_sub, button, eventLoop, gui, hasStarted) {
 		return [false];
 	}
 	
+	const timermSec = 30000; // 30 seconds
+	const timerSec = math.trunc(timermSec/1000);
+
 	print("USB is connected");
+	print(
+		"Every", 
+		timerSec, 
+		"second(s), the charactere", 
+		'"'+character+'"',
+		"will be typed"
+	);
 	
-	const timerSec = 30000; // 30 seconds
-	let timer = eventLoop.timer("periodic", timerSec);
+	let timer = eventLoop.timer("periodic", timermSec);
 	
 	eventLoop.subscribe(
 		timer, 

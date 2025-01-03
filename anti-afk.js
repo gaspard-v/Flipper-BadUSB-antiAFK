@@ -5,6 +5,26 @@ let gui = require("gui");
 let dialog = require("gui/dialog");
 let math = require("math");
 
+function getRandUInt16() {
+    return math.floor(math.random() * 0xffff);
+}
+
+function getRandInterval(interval) {
+    let lower = interval[0];
+    let upper = interval[1];
+    if (upper < lower) lower = upper;
+    let randomNumber = math.random() * (upper - lower);
+    randomNumber = math.floor(randomNumber);
+    return randomNumber + lower;
+}
+
+let randomVid = getRandUInt16();
+let randomPid = getRandUInt16();
+let randInterval = [30000, 60000];
+let characters = "a";
+let layoutPath = "/ext/badusb/assets/layouts/fr-FR.kl";
+// Change to en-EN.kl for QWERTY keyboards
+
 let views = {
     dialog: dialog.makeWith({
         header: "BadUSB anti-AFK",
@@ -12,16 +32,6 @@ let views = {
         center: "Start",
     }),
 };
-
-function randomUInt16() {
-    return math.floor(math.random() * 0xffff);
-}
-
-let randomVid = randomUInt16();
-let randomPid = randomUInt16();
-let character = "a";
-let layoutPath = "/ext/badusb/assets/layouts/fr-FR.kl";
-// Change to en-EN.kl for QWERTY keyboards
 
 badusb.setup({
     vid: randomVid,
@@ -31,8 +41,18 @@ badusb.setup({
     layoutPath: layoutPath,
 });
 
-function onPeriodic(_subscription, _item, eventLoop) {
-    badusb.print(character);
+function createRandOneshot(eventLoop, func) {
+    let randNum = getRandInterval(randInterval);
+    let randNumSec = math.trunc(randNum / 1000);
+    print("next in", randNumSec, "seconds");
+    let timer = eventLoop.timer("oneshot", randNum);
+    eventLoop.subscribe(timer, func, eventLoop);
+}
+
+function onOneshot(_subscription, _item, eventLoop) {
+    badusb.print(characters);
+    notify.blink("blue", "long");
+    createRandOneshot(eventLoop, onOneshot);
 }
 
 function onInput(_sub, button, eventLoop, gui, hasStarted) {
@@ -50,21 +70,8 @@ function onInput(_sub, button, eventLoop, gui, hasStarted) {
         return [false];
     }
 
-    let timermSec = 30000; // 30 seconds
-    let timerSec = math.trunc(timermSec / 1000);
-
     print("USB is connected");
-    print(
-        "Every",
-        timerSec,
-        "second(s), the charactere",
-        '"' + character + '"',
-        "will be typed"
-    );
-
-    let timer = eventLoop.timer("periodic", timermSec);
-
-    eventLoop.subscribe(timer, onPeriodic, eventLoop);
+    createRandOneshot(eventLoop, onOneshot);
     return [true];
 }
 

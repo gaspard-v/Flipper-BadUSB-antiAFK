@@ -36,8 +36,8 @@ let views = {
 badusb.setup({
     vid: randomVid,
     pid: randomPid,
-    mfrName: "Unknown",
-    prodName: "Unknown",
+    mfrName: "USB",
+    prodName: "USB",
     layoutPath: layoutPath,
 });
 

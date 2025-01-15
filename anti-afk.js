@@ -2,8 +2,9 @@ let badusb = require("badusb");
 let notify = require("notification");
 let eventLoop = require("event_loop");
 let gui = require("gui");
-let dialog = require("gui/dialog");
+let submenuView = require("gui/submenu");
 let math = require("math");
+let textBoxView = require("gui/text_box");
 
 function getRandUInt16() {
     return math.floor(math.random() * 0xffff);
@@ -26,10 +27,11 @@ let layoutPath = "/ext/badusb/assets/layouts/fr-FR.kl";
 // Change to en-EN.kl for QWERTY keyboards
 
 let views = {
-    dialog: dialog.makeWith({
-        header: "BadUSB anti-AFK",
-        text: "Press OK to start",
-        center: "Start",
+    textBox: textBoxView.makeWith({
+        text: "None",
+    }),
+    menu: submenuView.makeWith({
+        items: ["Start", "Exit app"],
     }),
 };
 
@@ -41,6 +43,8 @@ badusb.setup({
     layoutPath: layoutPath,
 });
 
+let START = false;
+
 function createRandOneshot(eventLoop, func) {
     let randNum = getRandInterval(randInterval);
     let randNumSec = math.trunc(randNum / 1000);
@@ -50,40 +54,40 @@ function createRandOneshot(eventLoop, func) {
 }
 
 function onOneshot(_subscription, _item, eventLoop) {
+    if (START === false) return;
     badusb.print(characters);
     notify.blink("blue", "long");
     createRandOneshot(eventLoop, onOneshot);
 }
 
-function onInput(_sub, button, eventLoop, gui, hasStarted) {
-    if (button !== "center") return [false];
-
-    if (hasStarted === true) return [hasStarted];
-
-    gui.viewDispatcher.sendTo("back");
-
-    if (!badusb.isConnected()) {
-        print("USB not connected");
-        notify.error();
+function onChosen(_sub, index, eventLoop, gui, views) {
+    if (index === 1) {
+        notify.success();
         badusb.quit();
         eventLoop.stop();
-        return [false];
+        return;
     }
 
-    print("USB is connected");
+    if (!badusb.isConnected()) {
+        notify.error();
+        views.textBox.set("text", "USB not connected");
+        gui.viewDispatcher.switchTo(views.textBox);
+        return;
+    }
+    views.textBox.set("text", "Anti AFK is running ...");
+    gui.viewDispatcher.switchTo(views.textBox);
+    START = true;
     createRandOneshot(eventLoop, onOneshot);
-    return [true];
 }
 
-function onNav(_sub, _item, eventLoop) {
-    notify.success();
-    badusb.quit();
-    eventLoop.stop();
+function onNav(_sub, _item, gui, views) {
+    START = false;
+    gui.viewDispatcher.switchTo(views.menu);
 }
 
-eventLoop.subscribe(views.dialog.input, onInput, eventLoop, gui, false);
+eventLoop.subscribe(views.menu.chosen, onChosen, eventLoop, gui, views);
 
-eventLoop.subscribe(gui.viewDispatcher.navigation, onNav, eventLoop);
+eventLoop.subscribe(gui.viewDispatcher.navigation, onNav, gui, views);
 
-gui.viewDispatcher.switchTo(views.dialog);
+gui.viewDispatcher.switchTo(views.menu);
 eventLoop.run();
